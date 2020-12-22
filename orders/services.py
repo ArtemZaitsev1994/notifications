@@ -1,16 +1,28 @@
+import uuid
 from .schemas import OrderCreate
 from .models import OrderNotification
-from core.utils import get_db
+from sqlalchemy.sql import text
 
 
-def order_create(data: dict):
-    with get_db() as db:
+def order_create(data: dict, engine):
+    query = '''
+    INSERT INTO order_notifications
+    (id, "order", from_user, to_user, created_at, event_id, received)
+    VALUES (
+        :uuid,
+        :order,
+        :from_user,
+        :to_user,
+        now(),
+        1,
+        FALSE
+    )
+    '''
+
+    with engine.connect() as con:
         validated_data = OrderCreate(**data).dict()
-        n = OrderNotification(**validated_data)
-
-        db.add(n)
-        db.commit()
-    return True
+        validated_data['uuid'] = str(uuid.uuid4())
+        rs = con.execute(text(query), **validated_data)
 
 
 available_events = {

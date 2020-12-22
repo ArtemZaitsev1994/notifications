@@ -29,12 +29,14 @@ async def get_redis_pool() -> aioredis.ConnectionsPool:
 
 
 async def single_reader(mpsc):
-    while await mpsc.wait_message():
-        sender, message = await mpsc.get()
+    from core.utils import get_db
+    from core.db import engine
+    db = next(get_db())
+    async for channel, message in mpsc.iter():
 
         message = json.loads(message.decode("utf-8"))
         print(message.get('type'))
-        consumer = consumers.get(sender.name.decode("utf-8") )
+        consumer = consumers.get(channel.name.decode("utf-8"))
         print(consumer)
         if consumer is None or (func := consumer.get(message.get('type'), '')) is None:
             print(f'Wrong message {message}')
@@ -42,9 +44,11 @@ async def single_reader(mpsc):
 
         print(message['data'])
         try:
-            func(message['data'])
+            func(message['data'], engine)
         except Exception as e:
             print(f'Error: {e}')
+        # else:
+        #     db.commit()
 
 
 async def set_readers():

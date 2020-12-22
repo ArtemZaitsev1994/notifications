@@ -1,17 +1,30 @@
+import uuid
+
+from sqlalchemy import text
 from .schemas import PremisesCreate
-from .models import PremisesNotification
-from core.utils import get_db
 
 
-def premises_create(data: dict):
-    with get_db() as db:
+def premises_create(data: dict, engine):
+    query = '''
+    INSERT INTO premises_notifications
+    (id, premises, from_user, to_user, created_at, event_id, received)
+    VALUES (
+        :uuid,
+        :premises,
+        :from_user,
+        :to_user,
+        now(),
+        1,
+        FALSE
+    )
+    '''
+
+    with engine.connect() as con:
         validated_data = PremisesCreate(**data).dict()
-        n = PremisesNotification(**validated_data)
-
-        db.add(n)
-        db.commit()
-
+        validated_data['uuid'] = str(uuid.uuid4())
+        rs = con.execute(text(query), **validated_data)
 
 available_events = {
     'premises_create': premises_create
 }
+
