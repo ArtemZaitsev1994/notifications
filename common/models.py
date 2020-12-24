@@ -23,3 +23,12 @@ class Events(Base):
     id = Column(Integer, primary_key=True, index=True)
     text = Column(Text())
     name = Column(String())
+
+
+class NotificationsHistory(Base):
+    __tablename__ = 'history'
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    notification = Column(UUID(as_uuid=True))
+    created_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow)
+    to_user = Column(UUID(as_uuid=True))

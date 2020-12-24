@@ -1,16 +1,21 @@
 import json
 
 from fastapi import (
-    WebSocket,
-    APIRouter,
+    Depends, Body,
+    WebSocket, APIRouter,
     WebSocketDisconnect,
+    Request
 )
 from fastapi.responses import HTMLResponse
 from aio_pika import connect, IncomingMessage, ExchangeType, RobustConnection
 
 from common.manager import ConnectionManager
 from settings import REDIS_HOST, REDIS_PORT, RABBIT_WEBSOCKETS_EXCHANGE
-from .events import create_events
+from sqlalchemy.orm import Session
+from core.utils import check_auth, get_db, row2dict
+from .events import create_events, get_event_by_id
+from .schemas import NotificationsList
+from .services import get_list_notifications
 
 
 router = APIRouter()
@@ -263,3 +268,48 @@ async def listen_websockets(rabbit_conn: RobustConnection):
                     }
                     response.update(success_response)
                     await websocket_manager.send_personal_message(msg['to_user'], response)
+
+
+@router.post('/notifications/', response_model=NotificationsList)
+async def notifications(
+    request: Request = Depends(check_auth),
+    session: Session = Depends(get_db),
+    limit: int = Body(...),
+    offset: int = Body(...)
+):
+    """Get all notifications for user"""
+    limit = min(limit, 10)
+    self_user_id = request.state.user
+    with session as db:
+        notifications = get_list_notifications(
+            db,
+            self_user_id,
+            limit=limit,
+            offset=offset
+        )
+
+    events = set(x.event_id for x in notifications)
+    events = get_event_by_id(events)
+    events = {
+        x.id: x
+        for x
+        in events
+    }
+    result = []
+    for note in notifications:
+        event = events[note.event_id]
+
+        result.append(
+            {
+                'text': note.formate_notification_text(event.text),
+                'created_at': note.created_at
+            }
+        )
+
+    response = {
+        'payload': {
+            'notifications': result
+        }
+    }
+    response.update(success_response)
+    return response

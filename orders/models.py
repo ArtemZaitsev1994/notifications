@@ -10,5 +10,5 @@ class OrderNotification(Base, NotificationBase):
 
     order = Column(UUID(as_uuid=True))
 
-    def fromate_notification_text(self, event_text):
+    def formate_notification_text(self, event_text):
         return event_text

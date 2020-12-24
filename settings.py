@@ -23,3 +23,6 @@ MAIN_SERVER_URL = f'{MONOLITH_HOST}:{MONOLITH_PORT}'
 
 RABBIT_WEBSOCKETS_EXCHANGE = 'websockets_notifications'
 RABBIT_NOTIFICATIONS_EXCHANGE = 'notifications'
+
+
+SECRET_KEY = os.environ.get('SECRET_KEY', 'foo')

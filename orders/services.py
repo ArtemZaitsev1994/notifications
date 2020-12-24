@@ -4,15 +4,19 @@ from common.models import Events
 from core.utils import get_db
 from common.events import get_event_by_name
 from user_info.services import get_user_info
-from services import send_all_ways_notification
+from common.services import send_all_ways_notification, save_in_history
 
 
 async def create_notification(data: dict, event: Events):
     with get_db() as db:
         validated_data = OrderCreate(**data).dict()
         n = OrderNotification(**validated_data, event_id=event.id)
-
         db.add(n)
+        db.flush()
+        db.refresh(n)
+
+        h = save_in_history(n.id, n.to_user)
+        db.add(h)
         db.commit()
         db.refresh(n)
     return n
@@ -23,7 +27,7 @@ async def common_notification_processing(action: str, data: dict):
     n = await create_notification(data, event)
 
     user_info = get_user_info(n.to_user)
-    text = n.fromate_notification_text(event.text)
+    text = n.formate_notification_text(event.text)
     await send_all_ways_notification(user_info, event.text)
     return n, text
 

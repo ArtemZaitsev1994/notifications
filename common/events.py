@@ -61,3 +61,20 @@ def get_event_by_name(event):
             Events.name == event
         ).first()
     return result
+
+
+def get_event_by_id(id):
+    with get_db() as db:
+        if isinstance(id, str):
+            result = db.query(
+                Events
+            ).filter(
+                Events.id == id
+            ).first()
+        else:
+            result = db.query(
+                Events
+            ).filter(
+                Events.id.in_(id)
+            ).all()
+    return result
