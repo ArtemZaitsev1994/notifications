@@ -1,30 +1,57 @@
-import uuid
 from .schemas import OrderCreate
 from .models import OrderNotification
-from sqlalchemy.sql import text
+from common.models import Events
+from core.utils import get_db
+from common.events import get_event_by_name
+from user_info.services import get_user_info
+from services import send_all_ways_notification
 
 
-def order_create(data: dict, engine):
-    query = '''
-    INSERT INTO order_notifications
-    (id, "order", from_user, to_user, created_at, event_id, received)
-    VALUES (
-        :uuid,
-        :order,
-        :from_user,
-        :to_user,
-        now(),
-        1,
-        FALSE
-    )
-    '''
-
-    with engine.connect() as con:
+async def create_notification(data: dict, event: Events):
+    with get_db() as db:
         validated_data = OrderCreate(**data).dict()
-        validated_data['uuid'] = str(uuid.uuid4())
-        rs = con.execute(text(query), **validated_data)
+        n = OrderNotification(**validated_data, event_id=event.id)
+
+        db.add(n)
+        db.commit()
+        db.refresh(n)
+    return n
+
+
+async def common_notification_processing(action: str, data: dict):
+    event = get_event_by_name(action)
+    n = await create_notification(data, event)
+
+    user_info = get_user_info(n.to_user)
+    text = n.fromate_notification_text(event.text)
+    await send_all_ways_notification(user_info, event.text)
+    return n, text
+
+
+async def create_order(data: dict):
+    event_name = 'create_order'
+    return await common_notification_processing(event_name, data)
+
+
+async def confirm_order(data: dict):
+    event_name = 'confirm_order'
+    return await common_notification_processing(event_name, data)
+
+
+async def decline_order(data: dict):
+    event_name = 'decline_order'
+    return await common_notification_processing(event_name, data)
+
+
+async def update_order(data: dict):
+    event_name = 'update_order'
+    return await common_notification_processing(event_name, data)
 
 
 available_events = {
-    'order_create': order_create
+    'create_order': create_order,
+    'confirm_order': confirm_order,
+    'decline_order': decline_order,
+    'update_order': update_order
 }
+receiver = ('orders', available_events)

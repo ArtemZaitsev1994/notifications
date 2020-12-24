@@ -1,25 +1,23 @@
 import json
+from collections import defaultdict
 
-from common.shemas import CommonResponse
+from .schemas import CommonResponse
 from starlette.websockets import WebSocket
 
 
 class ConnectionManager:
     def __init__(self):
-        self.active_connections = {}
+        self.active_connections = defaultdict(list)
 
     async def add_connection(self, user_id: str, websocket: WebSocket):
-        self.active_connections[user_id] = websocket
+        self.active_connections[user_id].append(websocket)
 
-    def disconnect(self, user_id: str):
-        del self.active_connections[user_id]
+    def disconnect(self, user_id: str, websocket: WebSocket):
+        self.active_connections[user_id].remove(websocket)
 
-    async def send_personal_message(self, websocket: WebSocket, message: dict):
-        await websocket.send_text(json.dumps(CommonResponse(**message).dict()))
-
-    async def broadcast(self, useres: list, message: dict):
-        for user in useres:
-            await self.send_personal_message(self.active_connections[user], message)
+    async def send_personal_message(self, user_id: str, message: dict):
+        for websocket in self.active_connections[user_id]:
+            await websocket.send_text(json.dumps(CommonResponse(**message).dict()))
 
     async def check_auth(self, websocket: WebSocket):
         return True
@@ -38,19 +36,6 @@ class ConnectionManager:
         # }
         # await self.send_personal_message(websocket, response)
         # self.disconnect(room_id, websocket)
-        await websocket.close(code=403)
-
-    async def chat_limit_error(self, websocket: WebSocket):
-        # response = {
-        #     'status': 403,
-        #     'payload': None,
-        #     'error': {
-        #         'code': 'LIMIT_EXCEEDED',
-        #         'message': 'Limit of new chats per day exceeded'
-        #     }
-        # }
-        # await self.send_personal_message(websocket, response)
-        # websocket.close(code=403)
         await websocket.close(code=403)
 
     async def access_denied_error(self, websocket: WebSocket):

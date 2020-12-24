@@ -9,3 +9,6 @@ class OrderNotification(Base, NotificationBase):
     __tablename__ = 'order_notifications'
 
     order = Column(UUID(as_uuid=True))
+
+    def fromate_notification_text(self, event_text):
+        return event_text

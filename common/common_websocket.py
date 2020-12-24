@@ -1,21 +1,17 @@
 import json
-from uuid import UUID
-from typing import List
-from html import escape, unescape
-import aioredis
 
 from fastapi import (
-    Depends, Body,
-    WebSocket, APIRouter,
+    WebSocket,
+    APIRouter,
     WebSocketDisconnect,
-    Request
 )
 from fastapi.responses import HTMLResponse
-from common.manager import ConnectionManager
-from sqlalchemy.orm import Session
+from aio_pika import connect, IncomingMessage, ExchangeType, RobustConnection
 
-from settings import REDIS_PORT, REDIS_HOST
-from core.utils import get_db
+from common.manager import ConnectionManager
+from settings import REDIS_HOST, REDIS_PORT, RABBIT_WEBSOCKETS_EXCHANGE
+from .events import create_events
+
 
 router = APIRouter()
 
@@ -195,6 +191,11 @@ error_response = {
 }
 
 
+@router.get('/create_events')
+def _events():
+    create_events()
+
+
 @router.get("/not/{self_id}")
 async def get(self_id):
     return HTMLResponse(html % (self_id))
@@ -207,7 +208,7 @@ websocket_manager = ConnectionManager()
 async def websocket_endpoint(
         current_user: str,
         websocket: WebSocket,
-        db: Session = Depends(get_db)
+        # db: Session = Depends(get_db)
 ):
     # Проверяем токен пришедший от соединения
     if not await websocket_manager.check_auth(websocket):
@@ -223,33 +224,42 @@ async def websocket_endpoint(
 
     await websocket.accept()
     await websocket_manager.add_connection(current_user, websocket)
-    redis = await aioredis.create_redis(f"redis://{REDIS_HOST}:{REDIS_PORT}")
-
-    channel, *_ = await redis.psubscribe(current_user)
 
     # Messages processing
     try:
-        while await channel.wait_message():
-            _, msg = await channel.get(encoding='utf-8')
-            msg = json.loads(msg)
-            print(msg)
-
-            response = {
-                'payload': {
-                    'type': msg,
-                    'messages': msg
-                }
-            }
-            response.update(success_response)
-            await websocket_manager.send_personal_message(websocket, response)
+        while True:
+            data = await websocket.receive_json()
 
     except WebSocketDisconnect:
-        websocket_manager.disconnect(chat_room.id, websocket)
-        response = {
-            'payload': {
-                'type': 'disconnect',
-                'message': f'User left {users[current_user]["firstname"]}'
-            }
-        }
-        response.update(success_response)
-        await websocket_manager.broadcast(chat_room.id, response)
+        websocket_manager.disconnect(current_user, websocket)
+
+
+async def listen_websockets(rabbit_conn: RobustConnection):
+    async with rabbit_conn:
+        # Creating channel
+        channel = await rabbit_conn.channel()
+
+        websockets_messages = await channel.declare_exchange(
+            RABBIT_WEBSOCKETS_EXCHANGE, ExchangeType.FANOUT
+        )
+
+        # Declaring queue
+        queue = await channel.declare_queue()
+        await queue.bind(websockets_messages)
+
+        async with queue.iterator() as queue_iter:
+            async for message in queue_iter:
+                async with message.process():
+                    msg = message.body.decode('utf-8')
+                    if not msg:
+                        continue
+                    msg = json.loads(msg)
+
+                    response = {
+                        'payload': {
+                            'type': 'notification',
+                            'messages': msg['text']
+                        }
+                    }
+                    response.update(success_response)
+                    await websocket_manager.send_personal_message(msg['to_user'], response)

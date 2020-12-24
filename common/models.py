@@ -1,10 +1,8 @@
 import uuid
 import datetime
 
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, desc, Text
-from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import UUID, JSON
-
+from sqlalchemy import Boolean, Column, Integer, String, DateTime, Text
+from sqlalchemy.dialects.postgresql import UUID
 
 from core.db import Base
 
@@ -24,3 +22,4 @@ class Events(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     text = Column(Text())
+    name = Column(String())

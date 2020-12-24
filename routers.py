@@ -6,6 +6,7 @@ routes = APIRouter()
 
 routes.include_router(router)
 
+
 def set_routes(app):
     for route in routes:
         app.include_router(
