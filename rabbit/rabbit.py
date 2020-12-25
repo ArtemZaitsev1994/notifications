@@ -15,7 +15,13 @@ from pydantic import ValidationError
 from orders.services import receiver as order_receiver
 from premises.services import receiver as premises_receiver
 from user_info.services import receiver as user_info_receiver
-from settings import REDIS_HOST, REDIS_PORT, RABBIT_WEBSOCKETS_EXCHANGE, RABBIT_NOTIFICATIONS_EXCHANGE
+from settings import (
+    REDIS_HOST,
+    REDIS_PORT,
+    RABBIT_WEBSOCKETS_EXCHANGE,
+    RABBIT_NOTIFICATIONS_EXCHANGE,
+    RABBIT_HOST
+)
 from .schemas import RabbitMessage
 
 
@@ -31,7 +37,7 @@ consumers = {
 
 async def get_rabbit_conn(loop: Loop):
     connection = await aio_pika.connect_robust(
-        "amqp://guest:guest@localhost/", loop=loop
+        RABBIT_HOST, loop=loop
     )
     return connection
 

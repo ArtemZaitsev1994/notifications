@@ -313,3 +313,13 @@ async def notifications(
     }
     response.update(success_response)
     return response
+
+
+@router.post('/read_notification/')
+async def notifications(
+    notification: str = Body(...),
+    request: Request = Depends(check_auth),
+    session: Session = Depends(get_db)
+):
+    print(notification)
+    return {}

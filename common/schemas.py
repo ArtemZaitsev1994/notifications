@@ -25,3 +25,7 @@ class NotificationsList(CommonResponse):
         notifications: List[Notifications]
 
     payload: Payload
+
+
+class ReadNotification(BaseModel):
+    notification: str

@@ -20,7 +20,7 @@ MONOLITH_PORT = os.environ.get('MONOLITH_PORT', '8000')
 
 MAIN_SERVER_URL = f'{MONOLITH_HOST}:{MONOLITH_PORT}'
 
-
+RABBIT_HOST = os.environ.get('RABBIT_HOST', 'amqp://guest:guest@localhost/')
 RABBIT_WEBSOCKETS_EXCHANGE = 'websockets_notifications'
 RABBIT_NOTIFICATIONS_EXCHANGE = 'notifications'
 
