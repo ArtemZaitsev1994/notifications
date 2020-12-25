@@ -1,8 +1,8 @@
 """1
 
-Revision ID: 3e82be4aa67e
+Revision ID: 9591da826a9a
 Revises: 
-Create Date: 2020-12-24 12:51:02.221745
+Create Date: 2020-12-25 12:16:13.006871
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '3e82be4aa67e'
+revision = '9591da826a9a'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -25,6 +25,14 @@ def upgrade():
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_events_id'), 'events', ['id'], unique=False)
+    op.create_table('history',
+    sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
+    sa.Column('notification', postgresql.UUID(as_uuid=True), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('to_user', postgresql.UUID(as_uuid=True), nullable=True),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_history_id'), 'history', ['id'], unique=False)
     op.create_table('order_notifications',
     sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
     sa.Column('to_user', postgresql.UUID(as_uuid=True), nullable=True),
@@ -49,7 +57,7 @@ def upgrade():
     op.create_index(op.f('ix_premises_notifications_id'), 'premises_notifications', ['id'], unique=False)
     op.create_table('user_info',
     sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
-    sa.Column('phone', sa.String(), nullable=True),
+    sa.Column('cellphone', sa.String(), nullable=True),
     sa.Column('country_code', sa.String(), nullable=True),
     sa.Column('available_sms_notification', sa.Boolean(), nullable=True),
     sa.Column('email', sa.String(), nullable=True),
@@ -68,6 +76,8 @@ def downgrade():
     op.drop_table('premises_notifications')
     op.drop_index(op.f('ix_order_notifications_id'), table_name='order_notifications')
     op.drop_table('order_notifications')
+    op.drop_index(op.f('ix_history_id'), table_name='history')
+    op.drop_table('history')
     op.drop_index(op.f('ix_events_id'), table_name='events')
     op.drop_table('events')
     # ### end Alembic commands ###
