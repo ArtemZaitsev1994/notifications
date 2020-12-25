@@ -16,6 +16,6 @@ COPY ./requirements.txt .
 RUN pip install -r requirements.txt
 
 COPY . .
-RUN chmod +x /usr/src/app/entrypoint.sh
+RUN chmod +x /usr/src/notifications/entrypoint.sh
 
 ENTRYPOINT ["/usr/src/app/entrypoint.sh"]
