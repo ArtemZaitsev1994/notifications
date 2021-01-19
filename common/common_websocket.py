@@ -13,9 +13,9 @@ from common.manager import ConnectionManager
 from settings import REDIS_HOST, REDIS_PORT, RABBIT_WEBSOCKETS_EXCHANGE
 from sqlalchemy.orm import Session
 from core.utils import check_auth, get_db, row2dict
-from .events import create_events, get_event_by_id
+from services.events import create_events, get_event_by_id
 from .schemas import NotificationsList
-from .services import get_list_notifications
+from .services.services import get_list_notifications
 
 
 router = APIRouter()

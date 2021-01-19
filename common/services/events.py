@@ -1,5 +1,5 @@
 from core.utils import get_db
-from .models import Events
+from ..models import Events
 
 
 events = {
@@ -36,6 +36,20 @@ events = {
         'id': 5,
         'text': '''
     New premises has been created!        
+    '''
+    },
+    'payment_succeeded': {
+        'name': 'payment_succeeded',
+        'id': 6,
+        'text': '''
+    Payment succeeded.        
+    '''
+    },
+    'subscription_started': {
+        'name': 'subscription_started',
+        'id': 7,
+        'text': '''
+    Subscription has been started.      
     '''
     }
 }

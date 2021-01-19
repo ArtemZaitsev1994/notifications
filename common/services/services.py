@@ -4,22 +4,19 @@ from sqlalchemy import desc, or_
 from sqlalchemy.orm import Session
 
 from user_info.models import UserInfo
-from common.models import NotificationBase, NotificationsHistory
+from user_info.services import get_user_info
 from orders.models import OrderNotification
 from premises.models import PremisesNotification
-
-
-
-async def send_sms(phone_number: str, text: str):
-    print(f'Sent sms with text: "{text}". to {phone_number}')
-
-
-async def send_email(email: str, text: str):
-    print(f'Sent email with text: "{text}". to {email}')
-
-
-async def send_push(*args, **kwargs):
-    ...
+from core.utils import get_db
+from .utils import (
+    send_sms,
+    send_email,
+    send_push,
+    create_notification,
+    add_notification_to_history
+)
+from .events import get_event_by_name
+from ..models import NotificationBase, NotificationsHistory
 
 
 async def send_all_ways_notification(user: UserInfo, notification: str):
@@ -64,5 +61,15 @@ def get_list_notifications(
     return sorted(notifications, key=lambda x: x.created_at, reverse=True)
 
 
-def save_in_history(notification: str, to_user: str):
-    return NotificationsHistory(notification=notification, to_user=to_user)
+async def common_notification_processing(action: str, data: dict, notification_model):
+    event = get_event_by_name(action)
+
+    with get_db() as db:
+        n = await create_notification(db, data, event, notification_model)
+        await add_notification_to_history(db, n.id, n.to_user)
+        db.refresh(n)
+
+    user_info = get_user_info(n.to_user)
+    text = n.formate_notification_text(event.text)
+    await send_all_ways_notification(user_info, event.text)
+    return n, text
